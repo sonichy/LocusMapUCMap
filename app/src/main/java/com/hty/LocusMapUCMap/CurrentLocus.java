@@ -13,8 +13,6 @@ import java.util.Vector;
 import org.jeo.vector.Feature;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.drawable.BitmapDrawable;
@@ -24,6 +22,8 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -59,16 +59,16 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 	BitmapDrawable BD_start, BD_end;
 	UCVectorLayer vlayer;
 	GeometryFactory GF = new GeometryFactory();
-	double lgt, ltt, lgt0, ltt0;// altitude,
+	double lgt, ltt, lgt0, ltt0, alt;
 	float dist, lc = 0, speed;
 	boolean isFirst = true;
-	SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+	SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 	SimpleDateFormat SDF1 = new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault());
 	SimpleDateFormat SDF_time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
 	SimpleDateFormat SDF_date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 	Date time_start;
 	SharedPreferences sharedPreferences;
-	String upload_server = "", SR = "", filename_gpx = "";
+	String filename_gpx = "";
 	DecimalFormat DF1 = new DecimalFormat("0.0");
 	DecimalFormat DF2 = new DecimalFormat("0.00");
 	Intent serviceForegroundIntent;
@@ -84,7 +84,6 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 		SDF_time.setTimeZone(TimeZone.getTimeZone("GMT+0"));
 		UCMapView.setTileScale(0.5f);
 		sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-		upload_server = sharedPreferences.getString("uploadServer", "http://sonichy.gearhostpreview.com/locusmap");
 		textView_current = findViewById(R.id.textView_current);
 		textView_upload = findViewById(R.id.textView_upload);
 		checkBoxFollow = findViewById(R.id.checkBoxFollow);
@@ -300,6 +299,7 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 		lgt = location.getLongitude();
 		ltt = location.getLatitude();
 		speed = location.getSpeed();
+		alt = location.getAltitude();
 		if (checkBoxFollow.isChecked())
 			mapView.moveTo(lgt, ltt, mapView.getScale());
 		mapView.setLocationPosition(lgt, ltt, location.getAccuracy());
@@ -335,9 +335,12 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 		if (location.getAccuracy() < 10) {// 测试：精度小于10米才记录
 			RWXML.add(filename_gpx, SDF.format(date), String.valueOf(ltt), String.valueOf(lgt), String.valueOf(lc), SDF_time.format(duration));
 		}
-		// new Thread(t).start();
-		textView_current.setText(SDF.format(time_start) + "\n经度：" + lgt + "\n纬度：" + ltt + "\n高度：" + location.getAltitude() + " 米\n速度：" + DF1.format(speed) + " 米/秒\n精度：" + location.getAccuracy() + " 米\n位移：" + DF2.format(dist) + " 米\n时长：" + SDF_time.format(duration) + "\n路程：" + DF2.format(lc) + " 米");
-		textView_upload.setText("上传：" + SR);
+		if (sharedPreferences.getBoolean("switch_upload", false) && location.getAccuracy() < 10) {
+			new Thread(t).start();
+		} else {
+			textView_upload.setText("");
+		}
+		textView_current.setText(SDF.format(time_start) + "\n经度：" + lgt + "\n纬度：" + ltt + "\n高度：" + alt + " 米\n速度：" + DF1.format(speed) + " 米/秒\n精度：" + location.getAccuracy() + " 米\n位移：" + DF2.format(dist) + " 米\n时长：" + SDF_time.format(duration) + "\n路程：" + DF2.format(lc) + " 米");
 	}
 
 	@Override
@@ -381,6 +384,7 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
+		Log.e(Thread.currentThread().getStackTrace()[2] + "", "onDestroy()");
 		locationManager.removeUpdates(this);
 		if (serviceForegroundIntent != null) {
 			stopService(serviceForegroundIntent);
@@ -390,10 +394,10 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		if (keyCode == KeyEvent.KEYCODE_BACK) {
-			startActivity(new Intent(CurrentLocus.this, MenuActivity.class));
-			return true;
-		}
+//		if (keyCode == KeyEvent.KEYCODE_BACK) {
+//			startActivity(new Intent(CurrentLocus.this, MenuActivity.class));
+//			return true;
+//		}
 		return super.onKeyDown(keyCode, event);
 	}
 
@@ -420,75 +424,151 @@ public class CurrentLocus extends Activity implements UCFeatureLayerListener, Lo
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
-			String SU = upload_server + "/add.php?date=" + dateu + "&time=" + timeu + "&longitude=" + lgt + "&latitude=" + ltt + "&speed=" + DF1.format(speed)
-					+ "&distance=" + DF2.format(dist);
-			SR = Utils.sendURLResponse(SU);
-			RWXML.append(Environment.getExternalStorageDirectory().getPath() + "/LocusMap/UCMap.log", "CurrentLocus.upload:" + SU);
+			String upload_server = sharedPreferences.getString("uploadServer", "http://sonichy.gearhostpreview.com/locusmap/add.php");
+			String SU = upload_server + "?date=" + dateu + "&time=" + timeu + "&longitude=" + lgt + "&latitude=" + ltt + "&altitude=" + alt + "&speed=" + DF1.format(speed)	+ "&distance=" + DF2.format(dist);
+			String SR = Utils.sendURLResponse(SU);
+			//RWXML.append(Environment.getExternalStorageDirectory().getPath() + "/LocusMap/UCMap.log", "CurrentLocus.upload:" + SU);
+			Message message = handler.obtainMessage();
+			message.what = 0;
+			message.obj = SR;
+			handler.sendMessage(message);
 		}
 	};
 
-	class GPSReceiver extends BroadcastReceiver {
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			Log.e(Thread.currentThread().getStackTrace()[2] + "", intent.toString());
-			Bundle bundle = intent.getExtras();
-			long time = bundle.getLong("Time");
-			float accuracy = bundle.getFloat("Accuracy");
-			lgt = bundle.getDouble("Longitude");
-			ltt = bundle.getDouble("Latitude");
-			float speed = bundle.getFloat("Speed");
-			double altitude = bundle.getDouble("Altitude");
-			float bearing = bundle.getFloat("Bearing");
-			String duration = bundle.getString("Duration");
-			float dist = bundle.getFloat("Distance");
-			float lc = bundle.getFloat("LuChen");
-
-			if (checkBoxFollow.isChecked())
-				mapView.moveTo(lgt, ltt, mapView.getScale());
-			mapView.setLocationPosition(lgt, ltt, accuracy);
-			// mapView.refresh();
-
-			if (isFirst) {
-				isFirst = false;
-				lgt0 = lgt;
-				ltt0 = ltt;
+	Handler handler = new Handler() {
+		public void handleMessage(Message msg) {
+			switch (msg.what) {
+				case 0:
+					textView_upload.setText("上传：" + msg.obj);
+					break;
 			}
-
-			Coordinate[] coords = new Coordinate[2];
-			coords[0] = new Coordinate(lgt, ltt);
-			coords[1] = new Coordinate(lgt0, ltt0);
-			Geometry geo = GF.createLineString(coords);
-			// 测试：速度>1显示绿色，否则显示红色。
-			if (speed > 1)
-				vlayer.addLine(geo, 2, 0xFF00FF00);
-			else
-				vlayer.addLine(geo, 2, 0xFFFF0000);
-			// mapView.refresh();
-			// dist =
-			// cn.creable.ucmap.openGIS.Arithmetic.Distance(GF.createPoint(new
-			// Coordinate(lgt0, ltt0)), GF.createPoint(new Coordinate(lgt,
-			// ltt)));
-
-			// 移到服务中
-			// Date date = new Date();
-			// long duration = time - time_start.getTime();
-			// if (accuracy < 10) {// 测试：精度小于10米才记录
-			// float[] results = new float[1];
-			// Location.distanceBetween(ltt, lgt, ltt0, lgt0, results);
-			// dist = results[0];
-			// lc += dist;
-			// RWXML.add(filename_gpx, SDF.format(date), String.valueOf(ltt),
-			// String.valueOf(lgt), String.valueOf(lc),
-			// SDF_time.format(duration));
-			// }
-
-			textView_current.setText(SDF.format(time_start) + "\n经度：" + lgt + "\n纬度：" + ltt + "\n高度：" + altitude + " 米\n速度：" + DF1.format(speed) + " 米/秒\n精度："
-					+ DF2.format(accuracy) + " 米\n位移：" + DF2.format(dist) + " 米\n时长：" + duration + "\n路程：" + DF2.format(lc) + " 米");
-			// new Thread(t).start();
-			textView_upload.setText("上传：" + SR);
-			lgt0 = lgt;
-			ltt0 = ltt;
 		}
-	}
+	};
+
+//	class GPSReceiver extends BroadcastReceiver {
+//		@Override
+//		public void onReceive(Context context, Intent intent) {
+//			Log.e(Thread.currentThread().getStackTrace()[2] + "", intent.toString());
+//			Bundle bundle = intent.getExtras();
+//			long time = bundle.getLong("Time");
+//			float accuracy = bundle.getFloat("Accuracy");
+//			lgt = bundle.getDouble("Longitude");
+//			ltt = bundle.getDouble("Latitude");
+//			float speed = bundle.getFloat("Speed");
+//			double altitude = bundle.getDouble("Altitude");
+//			float bearing = bundle.getFloat("Bearing");
+//			String duration = bundle.getString("Duration");
+//			float dist = bundle.getFloat("Distance");
+//			float lc = bundle.getFloat("LuChen");
+//
+//			if (checkBoxFollow.isChecked())
+//				mapView.moveTo(lgt, ltt, mapView.getScale());
+//			mapView.setLocationPosition(lgt, ltt, accuracy);
+//			// mapView.refresh();
+//
+//			if (isFirst) {
+//				isFirst = false;
+//				lgt0 = lgt;
+//				ltt0 = ltt;
+//			}
+//
+//			Coordinate[] coords = new Coordinate[2];
+//			coords[0] = new Coordinate(lgt, ltt);
+//			coords[1] = new Coordinate(lgt0, ltt0);
+//			Geometry geo = GF.createLineString(coords);
+//			// 测试：速度>1显示绿色，否则显示红色。
+//			if (speed > 1)
+//				vlayer.addLine(geo, 2, 0xFF00FF00);
+//			else
+//				vlayer.addLine(geo, 2, 0xFFFF0000);
+//			// mapView.refresh();
+//			// dist =
+//			// cn.creable.ucmap.openGIS.Arithmetic.Distance(GF.createPoint(new
+//			// Coordinate(lgt0, ltt0)), GF.createPoint(new Coordinate(lgt,
+//			// ltt)));
+//
+//			// 移到服务中
+//			// Date date = new Date();
+//			// long duration = time - time_start.getTime();
+//			// if (accuracy < 10) {// 测试：精度小于10米才记录
+//			// float[] results = new float[1];
+//			// Location.distanceBetween(ltt, lgt, ltt0, lgt0, results);
+//			// dist = results[0];
+//			// lc += dist;
+//			// RWXML.add(filename_gpx, SDF.format(date), String.valueOf(ltt),
+//			// String.valueOf(lgt), String.valueOf(lc),
+//			// SDF_time.format(duration));
+//			// }
+//
+//			textView_current.setText(SDF.format(time_start) + "\n经度：" + lgt + "\n纬度：" + ltt + "\n高度：" + altitude + " 米\n速度：" + DF1.format(speed) + " 米/秒\n精度："
+//					+ DF2.format(accuracy) + " 米\n位移：" + DF2.format(dist) + " 米\n时长：" + duration + "\n路程：" + DF2.format(lc) + " 米");
+//			// new Thread(t).start();
+//			textView_upload.setText("上传：" + SR);
+//			lgt0 = lgt;
+//			ltt0 = ltt;
+//		}
+//	}class GPSReceiver extends BroadcastReceiver {
+//		@Override
+//		public void onReceive(Context context, Intent intent) {
+//			Log.e(Thread.currentThread().getStackTrace()[2] + "", intent.toString());
+//			Bundle bundle = intent.getExtras();
+//			long time = bundle.getLong("Time");
+//			float accuracy = bundle.getFloat("Accuracy");
+//			lgt = bundle.getDouble("Longitude");
+//			ltt = bundle.getDouble("Latitude");
+//			float speed = bundle.getFloat("Speed");
+//			double altitude = bundle.getDouble("Altitude");
+//			float bearing = bundle.getFloat("Bearing");
+//			String duration = bundle.getString("Duration");
+//			float dist = bundle.getFloat("Distance");
+//			float lc = bundle.getFloat("LuChen");
+//
+//			if (checkBoxFollow.isChecked())
+//				mapView.moveTo(lgt, ltt, mapView.getScale());
+//			mapView.setLocationPosition(lgt, ltt, accuracy);
+//			// mapView.refresh();
+//
+//			if (isFirst) {
+//				isFirst = false;
+//				lgt0 = lgt;
+//				ltt0 = ltt;
+//			}
+//
+//			Coordinate[] coords = new Coordinate[2];
+//			coords[0] = new Coordinate(lgt, ltt);
+//			coords[1] = new Coordinate(lgt0, ltt0);
+//			Geometry geo = GF.createLineString(coords);
+//			// 测试：速度>1显示绿色，否则显示红色。
+//			if (speed > 1)
+//				vlayer.addLine(geo, 2, 0xFF00FF00);
+//			else
+//				vlayer.addLine(geo, 2, 0xFFFF0000);
+//			// mapView.refresh();
+//			// dist =
+//			// cn.creable.ucmap.openGIS.Arithmetic.Distance(GF.createPoint(new
+//			// Coordinate(lgt0, ltt0)), GF.createPoint(new Coordinate(lgt,
+//			// ltt)));
+//
+//			// 移到服务中
+//			// Date date = new Date();
+//			// long duration = time - time_start.getTime();
+//			// if (accuracy < 10) {// 测试：精度小于10米才记录
+//			// float[] results = new float[1];
+//			// Location.distanceBetween(ltt, lgt, ltt0, lgt0, results);
+//			// dist = results[0];
+//			// lc += dist;
+//			// RWXML.add(filename_gpx, SDF.format(date), String.valueOf(ltt),
+//			// String.valueOf(lgt), String.valueOf(lc),
+//			// SDF_time.format(duration));
+//			// }
+//
+//			textView_current.setText(SDF.format(time_start) + "\n经度：" + lgt + "\n纬度：" + ltt + "\n高度：" + altitude + " 米\n速度：" + DF1.format(speed) + " 米/秒\n精度："
+//					+ DF2.format(accuracy) + " 米\n位移：" + DF2.format(dist) + " 米\n时长：" + duration + "\n路程：" + DF2.format(lc) + " 米");
+//			// new Thread(t).start();
+//			textView_upload.setText("上传：" + SR);
+//			lgt0 = lgt;
+//			ltt0 = ltt;
+//		}
+//	}
 
 }

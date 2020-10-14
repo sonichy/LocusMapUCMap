@@ -73,6 +73,7 @@ public class MainApplication extends Application {
 
 	public void addActivity(Activity activity) {
 		activityList.add(activity);
+		Log.e(Thread.currentThread().getStackTrace()[2] + "", "Activity 数目： " + activityList.size());
 	}
 
 	public void exit() {

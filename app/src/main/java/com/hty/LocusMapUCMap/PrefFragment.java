@@ -5,7 +5,6 @@ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceFragment;
-import android.util.Log;
 
 public class PrefFragment extends PreferenceFragment implements OnSharedPreferenceChangeListener {
 	EditTextPreference EDP_upload_server;
@@ -15,37 +14,27 @@ public class PrefFragment extends PreferenceFragment implements OnSharedPreferen
 		super.onCreate(savedInstanceState);
 		addPreferencesFromResource(R.xml.preferences);
 		EDP_upload_server = (EditTextPreference) findPreference("upload_server");
-		// Log.e("PrefFragment.java:18", EDP_upload_server + "");
-	}
-
-	void initTextSummary() {
-		SharedPreferences sharedPreferences = getPreferenceScreen().getSharedPreferences();
-		String uploadServer = sharedPreferences.getString("uploadServer", "");
-		Log.e("PrefFragment.java:24", uploadServer);
-		if (uploadServer.equals("")) {
-			EDP_upload_server.setSummary("http://sonichy.gearhostpreview.com/locusmap");
-		} else {
-			EDP_upload_server.setSummary(uploadServer);
-		}
 	}
 
 	@Override
 	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-		initTextSummary();
-		Log.e("PrefFragment.java:35", key + "=" + sharedPreferences.getString(key, ""));
-		EDP_upload_server.setSummary(sharedPreferences.getString(key, ""));
+		if (key.equals("upload_server"))
+			EDP_upload_server.setSummary(sharedPreferences.getString(key, "http://sonichy.gearhostpreview.com/locusmap/add.php"));
 	}
 
 	@Override
 	public void onResume() {
 		super.onResume();
-		initTextSummary();
+		SharedPreferences sharedPreferences = getPreferenceScreen().getSharedPreferences();
+		String upload_server = sharedPreferences.getString("uploadServer", "http://sonichy.gearhostpreview.com/locusmap/add.php");
+		EDP_upload_server.setSummary(upload_server);
 		getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 	}
 
 	@Override
 	public void onPause() {
-		getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
 		super.onPause();
+		getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
 	}
+
 }

@@ -35,69 +35,47 @@
         android:layout_centerInParent="true"
         android:orientation="vertical" >
 
-    <Button
-        android:id="@+id/button_nomap"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/imageView1"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="无图模式" />
+        <Button
+            android:id="@+id/button_nomap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="无图模式" />
 
-    <Button
-        android:id="@+id/button_map"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_nomap"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:text=" 开始新行程" />
+        <Button
+            android:id="@+id/button_map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=" 开始新行程" />
 
-    <Button
-        android:id="@+id/button_history"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_map"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="打开本地行程" />
+        <Button
+            android:id="@+id/button_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="打开本地行程" />
 
-    <Button
-        android:id="@+id/button_server"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_history"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="打开服务器行程" />
+        <Button
+            android:id="@+id/button_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="打开服务器行程" />
 
-    <Button
-        android:id="@+id/button_set"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_server"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="设        置" />
+        <Button
+            android:id="@+id/button_set"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="设        置" />
 
-    <Button
-        android:id="@+id/button_about"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_set"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="关        于" />
+        <Button
+            android:id="@+id/button_about"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="关        于" />
 
-    <Button
-        android:id="@+id/button_quit"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/button_about"
-        android:layout_centerHorizontal="true"
-        android:layout_gravity="center"
-        android:text="退        出" />
+        <Button
+            android:id="@+id/button_quit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="退        出" />
     
     </LinearLayout>
 

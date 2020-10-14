@@ -64,10 +64,6 @@ public class MenuActivity extends Activity {
 		// button_quit.getLayoutParams().width = width;
 
 		sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-		upload_server = sharedPreferences.getString("uploadServer", "http://sonichy.gearhostpreview.com/locusmap");
-		// Log.e("upload_server", upload_server);
-		// Toast.makeText(getApplicationContext(), "服务器：" + upload_server,
-		// Toast.LENGTH_SHORT).show();
 	}
 
 	class ButtonListener implements OnClickListener {
@@ -84,8 +80,10 @@ public class MenuActivity extends Activity {
 				startActivity(new Intent(MenuActivity.this, GPXListActivity.class));
 				break;
 			case R.id.button_server:
+				upload_server = sharedPreferences.getString("uploadServer", "http://sonichy.gearhostpreview.com/locusmap/add.php");
+				String surl = upload_server.substring(0, upload_server.lastIndexOf("/"));
 				Intent intent = new Intent();
-				intent.setData(Uri.parse(upload_server));
+				intent.setData(Uri.parse(surl));
 				intent.setAction(Intent.ACTION_VIEW);
 				MenuActivity.this.startActivity(intent);
 				break;
@@ -95,8 +93,8 @@ public class MenuActivity extends Activity {
 			case R.id.button_about:
 				new AlertDialog.Builder(MenuActivity.this)
 						.setIcon(R.drawable.ic_launcher)
-						.setTitle("轨迹地图UCMap版  V1.3")
-						.setMessage("利用UCMap提供的地图、定位、绘图和手机的GPS功能绘制、记录位移轨迹，查看记录的轨迹，上传GPS数据到服务器。\n作者：海天鹰\nE-mail：sonichy@163.com\nQQ：84429027\n源码：https://github.com/sonichy/LocusMapUCMap")
+						.setTitle("轨迹地图UCMap版  V1.4")
+						.setMessage("利用UCMap提供的地图、定位、绘图和手机的GPS功能绘制、记录位移轨迹，查看记录的轨迹，合并轨迹，上传GPS数据到服务器。\n作者：海天鹰\nE-mail：sonichy@163.com\nQQ：84429027\n源码：https://github.com/sonichy/LocusMapUCMap")
 						.setPositiveButton("确定", null).show();
 				break;
 			case R.id.button_quit:
@@ -112,11 +110,6 @@ public class MenuActivity extends Activity {
 			return true;
 		}
 		return super.onKeyDown(keyCode, event);
-	}
-
-	@Override
-	protected void onDestroy() {
-		super.onDestroy();
 	}
 
 	@Override

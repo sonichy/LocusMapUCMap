@@ -3,29 +3,22 @@ package com.hty.LocusMapUCMap;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
@@ -33,8 +26,8 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 import android.os.Environment;
 import android.util.Log;
@@ -42,13 +35,13 @@ import android.util.Log;
 import com.vividsolutions.jts.geom.Coordinate;
 
 public class RWXML {
-	static SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-	static SimpleDateFormat timeformat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+	static SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+	static SimpleDateFormat SDF_Hms = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
 	static Date duration;
-	static double distance;
-	static int seconds, h, m, s;
+	//static double distance;
 	static DecimalFormat DF = new DecimalFormat("0.0");
 	static DecimalFormat DF1 = new DecimalFormat("0");
+	static String dir = Environment.getExternalStorageDirectory().getPath() + File.separator + "LocusMap" + File.separator;
 
 	static void create(String time) {
 		String dir = Environment.getExternalStorageDirectory().getPath() + "/LocusMap/";
@@ -63,8 +56,7 @@ public class RWXML {
 		if (!file.exists()) {
 			try {
 				file.createNewFile();
-			} catch (IOException e) {
-				// e.printStackTrace();
+			} catch (Exception e) {
 				Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 			}
 		}
@@ -88,30 +80,24 @@ public class RWXML {
 			bw.flush();
 			bw.close();
 			fw.close();
-		} catch (IOException e) {
-			// e.printStackTrace();
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 	}
 
 	static void add(String filename, String time, String latitude, String longitude, String distance, String duration) {
-		String filepath = Environment.getExternalStorageDirectory().getPath() + "/LocusMap/" + filename;
-		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-		DocumentBuilder db = null;
+		String filepath = dir + filename;
+		DocumentBuilderFactory DBF = DocumentBuilderFactory.newInstance();
+		DocumentBuilder DB = null;
 		try {
-			db = dbf.newDocumentBuilder();
-		} catch (ParserConfigurationException e) {
-			// e.printStackTrace();
+			DB = DBF.newDocumentBuilder();
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		Document doc = null;
 		try {
-			doc = db.parse(new FileInputStream(filepath));
-		} catch (SAXException e) {
-			// e.printStackTrace();
-			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
-		} catch (IOException e) {
-			// e.printStackTrace();
+			doc = DB.parse(new FileInputStream(filepath));
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		doc.getDocumentElement().getElementsByTagName("endtime").item(0).setTextContent(time);
@@ -132,8 +118,7 @@ public class RWXML {
 		Transformer transformer = null;
 		try {
 			transformer = TFactory.newTransformer();
-		} catch (TransformerConfigurationException e) {
-			// e.printStackTrace();
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
@@ -143,55 +128,48 @@ public class RWXML {
 		StreamResult result = new StreamResult(new File(filepath));
 		try {
 			transformer.transform(source, result);
-		} catch (TransformerException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 	}
 
 	static Coordinate[] read(String filename) {
 		String starttime = "", endtime = "", sdistance = "", sduration = "", info;
+		int seconds=0, h, m, s;
+		Double distance = 0.0;
 		String filepath = Environment.getExternalStorageDirectory().getPath() + "/LocusMap/" + filename;
 		DocumentBuilderFactory DBF = DocumentBuilderFactory.newInstance();
 		DocumentBuilder DB = null;
 		try {
 			DB = DBF.newDocumentBuilder();
 		} catch (ParserConfigurationException e) {
-			// e.printStackTrace();
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		Document doc = null;
 		try {
 			doc = DB.parse(new FileInputStream(filepath));
-		} catch (FileNotFoundException e) {
-			// e.printStackTrace();
+		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 			return null;
-		} catch (SAXException e) {
-			// e.printStackTrace();
-			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
-		} catch (IOException e) {
-			// e.printStackTrace();
-			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		try {
-			starttime = doc.getDocumentElement().getElementsByTagName("starttime").item(0).getFirstChild().getTextContent();
+			starttime = doc.getDocumentElement().getElementsByTagName("starttime").item(0).getTextContent();
 		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		try {
-			endtime = doc.getDocumentElement().getElementsByTagName("endtime").item(0).getFirstChild().getTextContent();
+			endtime = doc.getDocumentElement().getElementsByTagName("endtime").item(0).getTextContent();
 		} catch (Exception e) {
 		}
 		try {
-			sdistance = doc.getDocumentElement().getElementsByTagName("distance").item(0).getFirstChild().getTextContent();
+			sdistance = doc.getDocumentElement().getElementsByTagName("distance").item(0).getTextContent();
 			distance = Double.parseDouble(sdistance);
 			sdistance = sdistance.substring(0, sdistance.indexOf("."));
 		} catch (Exception e) {
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		}
 		try {
-			sduration = doc.getDocumentElement().getElementsByTagName("duration").item(0).getFirstChild().getTextContent();
+			sduration = doc.getDocumentElement().getElementsByTagName("duration").item(0).getTextContent();
 			h = Integer.parseInt(sduration.substring(0, 2));
 			m = Integer.parseInt(sduration.substring(3, 5));
 			s = Integer.parseInt(sduration.substring(6));
@@ -235,7 +213,6 @@ public class RWXML {
 			Date date = new Date();
 			out.write(SDF.format(date) + ": " + conent + "\n");
 		} catch (Exception e) {
-			// e.printStackTrace();
 			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 		} finally {
 			try {
@@ -243,10 +220,91 @@ public class RWXML {
 					out.close();
 				}
 			} catch (IOException e) {
-				// e.printStackTrace();
 				Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
 			}
 		}
+	}
+
+	static boolean merge(List<String> list) {
+		DocumentBuilderFactory DBF = DocumentBuilderFactory.newInstance();
+		DocumentBuilder DB = null;
+		try {
+			DB = DBF.newDocumentBuilder();
+		} catch (Exception e) {
+			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+		}
+		Document doc = null, doc1 = null;
+		for (int i=0; i<list.size(); i++) {
+			String filepath = dir + list.get(i);
+            Log.e(Thread.currentThread().getStackTrace()[2] + "", filepath);
+			if (i == 0) {
+				try {
+                    //Log.e(Thread.currentThread().getStackTrace()[2] + "", filepath);
+					doc = DB.parse(new FileInputStream(filepath));
+					continue;
+				} catch (Exception e) {
+					Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+				}
+			} else {
+				try {
+					doc1 = DB.parse(new FileInputStream(filepath));
+				} catch (Exception e) {
+					Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+				}
+            }
+			String endtime = doc1.getDocumentElement().getElementsByTagName("endtime").item(0).getTextContent();
+			doc.getDocumentElement().getElementsByTagName("endtime").item(0).setTextContent(endtime);
+
+			String sdistance1 = doc.getDocumentElement().getElementsByTagName("distance").item(0).getTextContent();
+			double distance1 = Double.parseDouble(sdistance1);
+			String sdistance2 = doc1.getDocumentElement().getElementsByTagName("distance").item(0).getTextContent();
+			double distance2 = Double.parseDouble(sdistance2);
+			double distance = distance1 + distance2;
+			doc.getDocumentElement().getElementsByTagName("distance").item(0).setTextContent(distance + "");
+
+            String starttime = doc.getDocumentElement().getElementsByTagName("starttime").item(0).getTextContent();
+
+            //调试：转ASCII编码
+//            StringBuilder SB = new StringBuilder();
+//            char[] ch = endtime.toCharArray();
+//            for (int k=0; k<ch.length; k++) {
+//                SB.append(ch[k]).append("(").append(Integer.valueOf(ch[k]).intValue()).append(")");
+//            }
+//            Log.e(Thread.currentThread().getStackTrace()[2] + "", SB.toString());
+
+            try {
+                Date date1 = SDF.parse(starttime);
+                Date date2 = SDF.parse(endtime.replace("\u00A0", " ")); // Unparseable date：去掉ASCII(160)不间断空格nbsp
+                Date date = new Date(date2.getTime() - date1.getTime());
+                SDF_Hms.setTimeZone(TimeZone.getTimeZone("GMT+0"));
+                doc.getDocumentElement().getElementsByTagName("duration").item(0).setTextContent(SDF_Hms.format(date));
+            } catch (Exception e) {
+                Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+            }
+
+			NodeList nodeList = doc1.getDocumentElement().getElementsByTagName("trkseg").item(0).getChildNodes();
+			for (int j=0; j<nodeList.getLength(); j++) {
+                Node node = doc.importNode(nodeList.item(j), true);
+                doc.getDocumentElement().getElementsByTagName("trkseg").item(0).appendChild(node);
+            }
+        }
+		Transformer transformer = null;
+		try {
+			transformer = TransformerFactory.newInstance().newTransformer();
+		} catch (Exception e) {
+			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+		}
+		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+		transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // 换行
+		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4"); // 缩进
+		DOMSource source = new DOMSource(doc);
+		StreamResult result = new StreamResult(new File(dir + list.size() + "m" + list.get(0)));
+		try {
+			transformer.transform(source, result);
+		} catch (Exception e) {
+			Log.e(Thread.currentThread().getStackTrace()[2] + "", e.toString());
+		}
+		return true;
 	}
 
 }

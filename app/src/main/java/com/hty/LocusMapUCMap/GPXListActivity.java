@@ -5,9 +5,11 @@ import java.io.FilenameFilter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 import android.app.AlertDialog;
@@ -18,9 +20,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.format.Formatter;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.KeyEvent;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -38,6 +42,7 @@ public class GPXListActivity extends ListActivity {
 	SimpleAdapter adapter;
 	SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 	final String dir = Environment.getExternalStorageDirectory().getPath() + "/LocusMap/";
+	List<String> list_merge = new ArrayList<>();
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -45,7 +50,60 @@ public class GPXListActivity extends ListActivity {
 		MainApplication.getInstance().addActivity(this);
 		setTitle("轨迹列表");
 		adapter = new SimpleAdapter(this, list_file, R.layout.item, new String[]{ "icon", "name", "size", "time" }, new int[]{ R.id.imageView_icon, R.id.textView_name, R.id.textView_size, R.id.textView_time });
-		//getList();
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		menu.add(0, 0, 0, "合并列表");
+		menu.add(0, 1, 1, "关闭");
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		int id = item.getItemId();
+		switch (id) {
+			case 0:
+				String[] items = list_merge.toArray(new String[list_merge.size()]);
+				AlertDialog.Builder builder = new AlertDialog.Builder(this);
+				builder.setTitle("合并列表" + list_merge.size())
+						.setItems(items, new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								if (which < list_merge.size() - 1)
+									Collections.swap(list_merge, which, which + 1);
+								else if (which == list_merge.size() - 1)
+									Collections.swap(list_merge, which, 0);
+							}
+						})
+						.setPositiveButton("合并", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								Log.e(Thread.currentThread().getStackTrace()[2] + "", list_merge.size() + "");
+								if (list_merge.size() > 1) {
+									if (RWXML.merge(list_merge))
+										genList();
+								} else {
+									Log.e(Thread.currentThread().getStackTrace()[2] + "", "轨迹数目不够，无法合并！");
+									//Toast不显示？
+									Toast.makeText(getApplicationContext(), "轨迹数目不够，无法合并！", Toast.LENGTH_SHORT);
+								}
+							}
+						})
+						.setNeutralButton("清空", new DialogInterface.OnClickListener() {
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								list_merge.clear();
+							}
+						})
+						.setNegativeButton("取消", null);
+				builder.create().show();
+				break;
+			case 1:
+				finish();
+				break;
+		}
+		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
@@ -54,7 +112,8 @@ public class GPXListActivity extends ListActivity {
 		String title = ((TextView) info.targetView.findViewById(R.id.textView_name)).getText().toString();
 		menu.setHeaderTitle(title);
 		menu.add(0, 0, 0, "分享");
-		menu.add(0, 1, 1, "删除");
+		menu.add(0, 1, 1, "添加到合并列表");
+		menu.add(0, 2, 2, "删除");
 	}
 
 	@Override
@@ -71,6 +130,9 @@ public class GPXListActivity extends ListActivity {
 				startActivity(Intent.createChooser(intent, "分享 " + filename));
 				break;
 			case 1:
+				list_merge.add(filename);
+				break;
+			case 2:
 				position = info.position;
 				new AlertDialog.Builder(GPXListActivity.this).setIcon(R.drawable.warn).setTitle("删除操作").setMessage("此步骤不可还原，确定删除\n" + filename + " ？")
 						.setPositiveButton("是", new DialogInterface.OnClickListener() {
@@ -111,7 +173,7 @@ public class GPXListActivity extends ListActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		getList();
+		genList();
 	}
 
 	class ComparatorTimeDesc implements Comparator<File> {
@@ -126,11 +188,10 @@ public class GPXListActivity extends ListActivity {
 		}
 	}
 
-	void getList() {
+	void genList() {
 		list_file.clear();
 		File file = new File(dir);
-		File[] files;
-		files = file.listFiles(new FilenameFilter() {
+		File[] files = file.listFiles(new FilenameFilter() {
 			@Override
 			public boolean accept(File f, String name) {
 				return name.endsWith(".gpx");
